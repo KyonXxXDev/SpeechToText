@@ -1,9 +1,9 @@
 import { pipeline } from "@huggingface/transformers";
 import wavefile from "wavefile";
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = path.resolve(__dirname, "temp");
@@ -18,7 +18,7 @@ const WAV_PATH = path.join(
 const SAMPLE_RATE = 16000;
 const CHUNK_SECONDS = 20;
 
-function safePath(filePath) {
+async function safePath(filePath) {
     const resolved = path.resolve(filePath);
 
     if (!resolved.startsWith(TEMP_DIR)) {
@@ -30,8 +30,8 @@ function safePath(filePath) {
 
 async function main() {
 
-    const safeMp3 = safePath(MP3_PATH);
-    const safeWav = safePath(WAV_PATH);
+    const safeMp3 = await safePath(MP3_PATH);
+    const safeWav = await safePath(WAV_PATH);
 
     spawnSync(
         "ffmpeg",
@@ -60,7 +60,7 @@ async function main() {
         throw new Error("Pipeline inválido");
     }
 
-    const buffer = fs.readFileSync(WAV_PATH);
+    const buffer = await fs.readFile(safeWav);
     const wav = new wavefile.WaveFile(buffer);
 
     wav.toBitDepth("32f");
@@ -81,7 +81,7 @@ async function main() {
     let fullText = "";
 
     for (let i = 0; i < chunks.length; i++) {
-        process.stdout.write(`[${i + 1}/${chunks.length}] transcribiendo... `);
+        process.stdout.write(`[${i + 1}/${chunks.length}] transcribiendo: `);
 
         const result = await transcriber(chunks[i], {
             language: "en",
@@ -90,7 +90,7 @@ async function main() {
         });
 
         const text = result.text.trim();
-        fullText += text + " ";
+        fullText += text;
         console.log(text);
     }
 
