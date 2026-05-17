@@ -3,26 +3,66 @@ import wavefile from "wavefile";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MP3_PATH = path.join(__dirname, "temp/audioLargo.mp3");
-const WAV_PATH = MP3_PATH.replace(".mp3", ".wav");
+const TEMP_DIR = path.resolve(__dirname, "temp");
+const MP3_PATH = path.join(TEMP_DIR, "audioLargo.mp3");
+const parsed = path.parse(MP3_PATH);
+
+const WAV_PATH = path.join(
+    parsed.dir,
+    `${parsed.name}.wav`
+);
 
 const SAMPLE_RATE = 16000;
 const CHUNK_SECONDS = 20;
 
+function safePath(filePath) {
+    const resolved = path.resolve(filePath);
+
+    if (!resolved.startsWith(TEMP_DIR)) {
+        throw new Error("Ruta no permitida");
+    }
+
+    return resolved;
+}
+
 async function main() {
-    execSync(`ffmpeg -i "${MP3_PATH}" -ar 16000 -ac 1 -f wav "${WAV_PATH}" -y`, {
-        stdio: "ignore"
-    });
+
+    const safeMp3 = safePath(MP3_PATH);
+    const safeWav = safePath(WAV_PATH);
+
+    spawnSync(
+        "ffmpeg",
+        [
+            "-i", safeMp3,
+            "-ar", "16000",
+            "-ac", "1",
+            "-f", "wav",
+            safeWav,
+            "-y"
+        ],
+        {
+            stdio: "ignore"
+        }
+    );
 
     const transcriber = await pipeline(
         "automatic-speech-recognition",
         "onnx-community/whisper-small"
     );
+    if (typeof transcriber === "function") {
+        console.log("Transcriber cargado correctamente");
+    } else {
+        console.log("Error al cargar el transcriber");
+        console.log(transcriber);
+        throw new Error("Pipeline inválido");
+    }
+
     const buffer = fs.readFileSync(WAV_PATH);
     const wav = new wavefile.WaveFile(buffer);
+
     wav.toBitDepth("32f");
     wav.toSampleRate(SAMPLE_RATE);
 
