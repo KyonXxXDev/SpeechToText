@@ -11,9 +11,9 @@ importers:
       '@huggingface/transformers':
         specifier: ^4.2.0
         version: 4.2.0
-      node-audiorecorder:
-        specifier: ^3.0.0
-        version: 3.0.0
+      node-microphone:
+        specifier: ^0.2.0
+        version: 0.2.0
       wavefile:
         specifier: ^11.0.0
         version: 11.0.0
@@ -272,8 +272,9 @@ packages:
     resolution: {integrity: sha512-OkeDaAZ/bQCxeFAozM55PKcKU0yJMPGifLwV4Qgjitu+5MoAfSQN4lsLJeXZ1b8w0x+/Emda6MZgXS1jvsapng==}
     engines: {node: '>=10'}
 
-  node-audiorecorder@3.0.0:
-    resolution: {integrity: sha512-nQepUJdQT4wD985zn7113tLZqVv0dh9ly9bsB6bE3GllPordEGUL7gFVnG2GCVArz/J/K+N50wo0574bwdpOeA==}
+  node-microphone@0.2.0:
+    resolution: {integrity: sha512-h+3675Neit1pk+dBsA5wdMFkGlZAPgercc1e+w8O+r2sSppSL501x8Uba8cEZtSrpBFZof6v6PXuLW5iAt+uew==}
+    engines: {node: '>=12'}
 
   object-keys@1.1.1:
     resolution: {integrity: sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==}
@@ -539,7 +540,7 @@ snapshots:
     dependencies:
       escape-string-regexp: 4.0.0
 
-  node-audiorecorder@3.0.0: {}
+  node-microphone@0.2.0: {}
 
   object-keys@1.1.1: {}
 
