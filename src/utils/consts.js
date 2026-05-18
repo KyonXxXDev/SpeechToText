@@ -18,7 +18,7 @@ export const SAFE_AUDIO = await safePath(AUDIO_PATH);
 export const SAFE_WAV = await safePath(WAV_PATH);
 
 export const SAMPLE_RATE = 16000;
-export const CHUNK_SECONDS = 20;
+export const CHUNK_SECONDS = 10;
 
 export const FFMPEG_BIN = "ffmpeg";
 export const FFMPEG_PIPE_ARGS = [
