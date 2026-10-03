@@ -42,7 +42,7 @@ ffmpeg.stdout.pipe(archivoStream);
 micStream.on('error', (err) => console.error('Error Mic:', err));
 ffmpeg.on('error', (err) => console.error('Error FFmpeg. ¿Está instalado en Windows?:', err));
 
-// 4. Detener automáticamente a los 10 segundos
+// 4. Detener automáticamente a los 10 sec
 setTimeout(() => {
   console.log('Deteniendo grabación y guardando MP3...');
   mic.stopRecording();

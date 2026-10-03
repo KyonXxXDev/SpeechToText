@@ -4,7 +4,7 @@ import { getTranscriber, transcribirChunk } from "./src/utils/transcriptor.js";
 const DURACION_GRABACION_MS = 20_000;
 
 async function main() {
-  // 1. Cargar modelo PRIMERO, antes de abrir el micrófono
+  // 1. Cargar modelo PRIMERO, antes de abrir el micro
   console.log("Cargando modelo Whisper...");
   await getTranscriber();
   console.log("Modelo listo ✅\n");

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Transcripción en Tiempo Real</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        h1 { color: #333; text-align: center; }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .upload-box { 
+            border: 2px dashed #ccc; 
+            padding: 40px; 
+            text-align: center; 
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        
+        .upload-box:hover {
+            background: #f9f9f9;
+            border-color: #666;
+        }
+
+        button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            margin-top: 10px; 
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        button:hover { background: #0056b3; }
+        
+        button.recording {
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        #resultado { 
+            margin-top: 20px; 
+            padding: 20px; 
+            background: #f8f9fa; 
+            border-radius: 8px;
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .transcription-line {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #e9ecef;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: #1976d2;
+        }
+
+        .status.recording {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎤 Transcripción en Tiempo Real</h1>
+    
+    <div id="status" class="status">Listo para grabar</div>
+    
+    <!-- Opción 1: Grabación desde micrófono -->
+    <button id="btnGrabar" onclick="iniciarGrabacion()">🔴 Comenzar a Grabar</button>
+    <button id="btnDetener" onclick="detenerGrabacion()" style="display:none; background:#dc3545;">⏹ Detener Grabación</button>
+
+    <!-- Opción 2: Subir archivo (opcional) -->
+    <div class="upload-box" id="dropZone">
+        Arrastra tu archivo aquí o haz clic para seleccionar<br>
+        (MP3, WAV) - Para transcripción tradicional
+    </div>
+    <input type="file" id="audioFile" accept="audio/*">
+
+    <button onclick="subirArchivo()" style="margin-top: 15px;">📁 Transcribir Archivo</button>
+
+    <h2>Transcripción:</h2>
+    <div id="resultado"></div>
+</div>
+
+<script>
+    let ws;
+    let isRecording = false;
+    const resultadoDiv = document.getElementById('resultado');
+    const statusDiv = document.getElementById('status');
+    const btnGrabar = document.getElementById('btnGrabar');
+    const btnDetener = document.getElementById('btnDetener');
+
+    // Conectar WebSocket para streaming en tiempo real
+    function conectarWebSocket() {
+        ws = new WebSocket(`ws://localhost:3001`);
+        
+        ws.onopen = () => {
+            console.log('✅ Conectado al servidor de transcripción');
+            statusDiv.textContent = '🟢 Conectado - Listo para grabar';
+            statusDiv.className = 'status';
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'transcription') {
+                    agregarTranscripcion(data.text);
+                } else if (data.type === 'error') {
+                    console.error('Error:', data.message);
+                }
+            } catch (err) {
+                // Si es un blob o buffer, procesarlo como audio crudo
+                console.log('Mensaje recibido:', event.data);
+            }
+        };
+
+        ws.onerror = (err) => {
+            console.error('❌ Error WebSocket:', err);
+            statusDiv.textContent = '🔴 Error de conexión';
+            statusDiv.className = 'status recording';
+        };
+
+        ws.onclose = () => {
+            console.log('Desconectado del servidor');
+            setTimeout(conectarWebSocket, 3000); // Reintentar cada 3 segundos
+        };
+    }
+
+    // Conectar al cargar la página
+    conectarWebSocket();
+
+    function agregarTranscripcion(texto) {
+        const line = document.createElement('div');
+        line.className = 'transcription-line';
+        
+        const timestamp = new Date().toLocaleTimeString();
+        line.innerHTML = `
+            <div class="timestamp">${timestamp}</div>
+            ${texto}
+        `;
+        
+        resultadoDiv.appendChild(line);
+        resultadoDiv.scrollTop = resultadoDiv.scrollHeight;
+    }
+
+    async function iniciarGrabacion() {
+        if (isRecording) return;
+        
+        try {
+            // Importar módulo de grabación en tiempo real
+            const { grabarYTranscribirEnTiempoReal } = await import('../utils/transcripcion-stream.js');
+            
+            btnGrabar.style.display = 'none';
+            btnDetener.style.display = 'inline-block';
+            statusDiv.textContent = '🟢 Grabando... (habla para transcribir)';
+            statusDiv.className = 'status recording';
+            
+            const { stop } = await grabarYTranscribirEnTiempoReal();
+            
+            // Guardar referencia para detener después
+            window.stopGrabacion = stop;
+            
+        } catch (err) {
+            console.error('Error al iniciar grabación:', err);
+            statusDiv.textContent = '❌ Error: ' + err.message;
+        }
+    }
+
+    function detenerGrabacion() {
+        if (window.stopGrabacion) {
+            window.stopGrabacion();
+            btnGrabar.style.display = 'inline-block';
+            btnDetener.style.display = 'none';
+            statusDiv.textContent = '🔴 Grabación detenida';
+            statusDiv.className = 'status';
+            
+            setTimeout(() => {
+                statusDiv.textContent = 'Listo para grabar';
+                statusDiv.className = 'status';
+            }, 2000);
+        }
+    }
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('audioFile');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => { 
+        e.preventDefault(); 
+        dropZone.style.background = '#eee'; 
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.style.background = 'transparent');
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.background = 'transparent';
+        fileInput.files = e.dataTransfer.files;
+    });
+
+    async function subirArchivo() {
+        const file = fileInput.files[0];
+        if (!file) return alert("Selecciona un archivo primero");
+
+        const formData = new FormData();
+        formData.append('audioFile', file);
+
+        try {
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.success) {
+                resultadoDiv.innerHTML += `<div class="transcription-line"><strong>Archivo transcrito:</strong><br>${data.texto || 'Transcripción completada'}</div>`;
+            } else {
+                alert("Error: " + data.error);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error de conexión");
+        }
+    }
+</script>
+</body>
+</html>
